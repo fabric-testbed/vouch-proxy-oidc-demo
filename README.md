@@ -18,6 +18,7 @@ Explore how Vouch Proxy encapsulates OIDC authentication data as an encoded JWT
     - [2. Vouch-Proxy JWT base64 decoded and unzipped (signature alg: HS256)](#step2)
     - [3. CILogon tokens (access, identity, refresh) - unpacked from JWT (signature alg: RS256)](#step3)
     - [4. Fully decoded/unpacked JWT with CILogon tokens](#step4) 
+    - [cURL with cookie](#curl)
 - [Configuration](#config)
 - [Usage](#usage)
 - [References](#references)
@@ -260,6 +261,190 @@ The resulting response contains the fully expanded cookie (tokens and/or JWTs ab
   "size": 1,
   "status": 200,
   "type": "vouch.jwt.fullydecoded"
+}
+```
+
+## <a name="curl"></a>cURL with cookie
+
+Since the endpoints in this demonstration are ReST-based, they can be interrogated using cURL.
+
+For example: `https://127.0.0.1:8443/step3-decoded-cilogon-tokens`
+
+As expected hitting an endpoint without proper authorization returns a `401 Unauthorized` message (NOTE: use of `--insecure` flag because the server running this code uses a self-signed SSL certificate)
+
+```console
+$ curl --insecure -X "GET" -H "accept: application/json" "https://127.0.0.1:8443/step3-decoded-cilogon-tokens"
+{
+  "errors": [
+    {
+      "details": "Login required: https://127.0.0.1:8443/login",
+      "message": "Unauthorized"
+    }
+  ],
+  "size": 1,
+  "status": 401,
+  "type": "error"
+}
+```
+
+Cookie auth can be added by first logging in through the web based UI and copying the cookie contents from the response into our cURL call. This would be found at: [https://127.0.0.1:8443/ui/#/vouch-proxy/step1_encoded_vouch_cookie_get]() 
+
+Export the cookie into your local terminal environment (cookie abbreviated for readability):
+
+```console
+$ export COOKIE='fabric-service-alpha=H4sIAAAAAAAA_6yW3ZK7qNaH72gKNXZND..._BQAA__-oBl1hVAkAAA=='
+```
+
+We can then use the cookie for authorization to the endpoint (tokens abbreviated for readability)
+
+```console
+$ curl --insecure --cookie $COOKIE -X "GET" -H "accept: application/json" "https://127.0.0.1:8443/step3-decoded-cilogon-tokens"
+{
+  "data": [
+    {
+      "access_token": "NB2HI4DTHIXS6Y3JNRXWO33...ZTFORUW2ZJ5HEYDAMBQGA",
+      "identity_token": {
+        "aud": "cilogon:/client_id/617cecdd74e32be4d818ca1151531dff",
+        "auth_time": 1647516697,
+        "email": "stealey@unc.edu",
+        "exp": 1647517598,
+        "family_name": "Stealey",
+        "given_name": "Michael",
+        "iat": 1647516698,
+        "iss": "https://cilogon.org",
+        "jti": "https://cilogon.org/oauth2/idToken/43ba2da855ae942279cb5cea9148607d/1647516698255",
+        "name": "Michael Stealey",
+        "sub": "http://cilogon.org/serverA/users/242181"
+      },
+      "refresh_token": "NB2HI4DTHIXS6Y3JNRXWO33...2GS3LFHU4DMNBQGAYDAMA"
+    }
+  ],
+  "size": 1,
+  "status": 200,
+  "type": "cilogon.tokens"
+}
+```
+
+The cookie can also be used for authorized access to any other service that uses the same OIDC Client and Vouch Proxy secret. Example using the [alpha-1.fabric-testbed.net]() endpoints.
+
+GET `/people` info for `?person_name=stea`:
+
+```console
+$ curl --insecure --cookie $COOKIE -X "GET" -H "accept: application/json" "https://alpha-1.fabric-testbed.net/people?person_name=stea"
+[
+  {
+    "email": "stealey@unc.edu",
+    "name": "Michael Stealey",
+    "uuid": "593dd0d3-cedb-4bc6-9522-a945da0a8a8e"
+  },
+  {
+    "email": "mjstealey@gmail.com",
+    "name": "mj stealey",
+    "uuid": "d5824c4f-ab9c-4b1a-b6f0-6ef6ec2c5efe"
+  }
+]
+```
+
+GET `/people` details for UUID = `593dd0d3-cedb-4bc6-9522-a945da0a8a8e`:
+
+```console
+$ curl --insecure --cookie $COOKIE -X "GET" -H "accept: application/json" "https://alpha-1.fabric-testbed.net/people/593dd0d3-cedb-4bc6-9522-a945da0a8a8e"
+{
+  "email": "stealey@unc.edu",
+  "name": "Michael Stealey",
+  "oidc_claim_sub": "http://cilogon.org/serverA/users/242181",
+  "projects": [
+    {
+      "created_by": {
+        "email": "stealey@unc.edu",
+        "name": "Michael Stealey",
+        "uuid": "593dd0d3-cedb-4bc6-9522-a945da0a8a8e"
+      },
+      "created_time": "2022-03-08 15:42:58.323768+00:00",
+      "description": "Development project",
+      "facility": "FABRIC",
+      "name": "Development project",
+      "uuid": "a5488d93-7c6b-48ea-9de1-19e216c0519b"
+    },
+    {
+      "created_by": {
+        "email": "yaxueguo@renci.org",
+        "name": "Yaxue Guo",
+        "uuid": "69f9b1a6-c3c3-4c53-8693-21c63e771c78"
+      },
+      "created_time": "2021-11-11 14:49:38+00:00",
+      "description": "FABRIC Project",
+      "facility": "FABRIC",
+      "name": "FABRIC Project",
+      "uuid": "8b3a2eae-a0c0-475a-807b-e9af581ce4c0"
+    },
+    {
+      "created_by": {
+        "email": "yaxueguo@renci.org",
+        "name": "Yaxue Guo",
+        "uuid": "69f9b1a6-c3c3-4c53-8693-21c63e771c78"
+      },
+      "created_time": "2021-05-24 17:24:30+00:00",
+      "description": "INSERT_PROJECT_DESCRIPTION",
+      "facility": "FABRIC",
+      "name": "Test Project",
+      "uuid": "c3e4b3ce-ca83-4bd7-ad5b-6ce6423eeb33"
+    },
+    {
+      "created_by": {
+        "email": "yaxueguo@renci.org",
+        "name": "Yaxue Guo",
+        "uuid": "69f9b1a6-c3c3-4c53-8693-21c63e771c78"
+      },
+      "created_time": "2022-01-31 20:49:52+00:00",
+      "description": "Test project for v1.1.1",
+      "facility": "FABRIC",
+      "name": "Test project for v1.1.1",
+      "uuid": "0a27a971-0d05-4aac-b0bf-f660eb950445"
+    }
+  ],
+  "roles": [
+    "0a27a971-0d05-4aac-b0bf-f660eb950445-pm",
+    "8b3a2eae-a0c0-475a-807b-e9af581ce4c0-pm",
+    "a5488d93-7c6b-48ea-9de1-19e216c0519b-pc",
+    "a5488d93-7c6b-48ea-9de1-19e216c0519b-po",
+    "approval-committee ",
+    "c3e4b3ce-ca83-4bd7-ad5b-6ce6423eeb33-pm",
+    "c3e4b3ce-ca83-4bd7-ad5b-6ce6423eeb33-po",
+    "fabric-active-users",
+    "facility-operators",
+    "project-leads"
+  ],
+  "uuid": "593dd0d3-cedb-4bc6-9522-a945da0a8a8e"
+}
+```
+
+GET `/projects` details for UUID = `a5488d93-7c6b-48ea-9de1-19e216c0519b`:
+
+```console
+$ curl --insecure --cookie $COOKIE -X "GET" -H "accept: application/json" "https://alpha-1.fabric-testbed.net/projects/a5488d93-7c6b-48ea-9de1-19e216c0519b"
+{
+  "created_by": {
+    "email": "stealey@unc.edu",
+    "name": "Michael Stealey",
+    "uuid": "593dd0d3-cedb-4bc6-9522-a945da0a8a8e"
+  },
+  "created_time": "2022-03-08 15:42:58.323768+00:00",
+  "description": "Development project",
+  "facility": "FABRIC",
+  "name": "Development project",
+  "project_members": [],
+  "project_owners": [
+    {
+      "email": "stealey@unc.edu",
+      "name": "Michael Stealey",
+      "uuid": "593dd0d3-cedb-4bc6-9522-a945da0a8a8e"
+    }
+  ],
+  "tags": [
+    "VM.NoLimit"
+  ],
+  "uuid": "a5488d93-7c6b-48ea-9de1-19e216c0519b"
 }
 ```
 
