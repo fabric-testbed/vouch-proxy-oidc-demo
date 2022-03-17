@@ -1,0 +1,373 @@
+openapi: 3.0.0
+info:
+  title: Vouch-Proxy OIDC JWT Demo
+  description: "Explore how Vouch-Proxy encapsulates OIDC JWT information as a cookie\
+    \ object\n1. Vouch-Proxy JWT stored as base64 encoded gzipped cookie\n2. Vouch-Proxy\
+    \ JWT base64 decoded and unzipped (signature alg: HS256)\n3. CILogon tokens (access,\
+    \ identity, refresh) - unpacked from JWT (signature alg: RS256)\n4. Fully decoded/unpacked\
+    \ JWT with CILogon tokens\n\nLogin:  https://{server_URL}/login \\\nLogout: https://{server_URL}/logout\n"
+  contact:
+    name: Michael J. Stealey
+    email: stealey@unc.edu
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/mit-license.html
+  version: 1.0.0
+servers:
+- url: https://127.0.0.1:8443
+  description: local development server (nginx)
+tags:
+- name: vouch-proxy
+  description: Vouch-Proxy
+paths:
+  /step1-encoded-vouch-cookie:
+    get:
+      tags:
+      - vouch-proxy
+      summary: Encoded JWT as Vouch-Proxy cookie
+      description: GET encoded JWT as cookie from Vouch-Proxy
+      operationId: step1_encoded_vouch_cookie_get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api_cookie_encoded'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_401_unauthorized'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_500_internal_server_error'
+      x-openapi-router-controller: swagger_server.controllers.vouch_proxy_controller
+  /step2-decoded-vouch-jwt:
+    get:
+      tags:
+      - vouch-proxy
+      summary: Decoded JWT from Vouch-Proxy cookie
+      description: GET decoded JWT from the cookie (alg HS256)
+      operationId: step2_decoded_vouch_jwt_get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api_jwt_decoded'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_401_unauthorized'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_500_internal_server_error'
+      x-openapi-router-controller: swagger_server.controllers.vouch_proxy_controller
+  /step3-decoded-cilogon-tokens:
+    get:
+      tags:
+      - vouch-proxy
+      summary: CILogon Tokens
+      description: GET CILogon tokens with decoded PIdToken JWT (alg RS256)
+      operationId: step3_decoded_cilogon_tokens_get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api_cilogon_tokens'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_401_unauthorized'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_500_internal_server_error'
+      x-openapi-router-controller: swagger_server.controllers.vouch_proxy_controller
+  /step4-fully-decoded-jwt:
+    get:
+      tags:
+      - vouch-proxy
+      summary: Fully decoded JWT
+      description: GET fully decoded JWT including CILogon tokens
+      operationId: step4_fully_decoded_jwt_get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/api_jwt_fully_decoded'
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_401_unauthorized'
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/status_500_internal_server_error'
+      x-openapi-router-controller: swagger_server.controllers.vouch_proxy_controller
+components:
+  schemas:
+    status_200_ok_single:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        size:
+          type: integer
+          default: 1
+        status:
+          type: integer
+          default: 200
+        type:
+          type: string
+    status_401_unauthorized:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/status_401_unauthorized_errors'
+        type:
+          type: string
+          default: error
+        size:
+          type: integer
+          default: 1
+        status:
+          type: integer
+          default: 401
+    status_500_internal_server_error:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/status_500_internal_server_error_errors'
+        type:
+          type: string
+          default: error
+        size:
+          type: integer
+          default: 1
+        status:
+          type: integer
+          default: 500
+    api_cookie_encoded:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/status_200_ok_single'
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: '#/components/schemas/cookie_encoded'
+    cookie_encoded:
+      type: object
+      properties:
+        cookie_name:
+          type: string
+        cookie_value:
+          type: string
+    api_jwt_decoded:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/status_200_ok_single'
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: '#/components/schemas/jwt_decoded'
+    jwt_decoded:
+      type: object
+      properties:
+        aud:
+          type: string
+        CustomClaims:
+          $ref: '#/components/schemas/jwt_decoded_CustomClaims'
+        exp:
+          type: string
+        iss:
+          type: string
+        PAccessToken:
+          type: string
+        PIdToken:
+          type: string
+        PRefreshToken:
+          type: string
+        username:
+          type: string
+    api_cilogon_tokens:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/status_200_ok_single'
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: '#/components/schemas/cilogon_tokens'
+    cilogon_tokens:
+      type: object
+      properties:
+        access_token:
+          type: string
+        identity_token:
+          $ref: '#/components/schemas/cilogon_tokens_identity_token'
+        refresh_token:
+          type: string
+    api_jwt_fully_decoded:
+      type: object
+      allOf:
+      - $ref: '#/components/schemas/status_200_ok_single'
+      - type: object
+        properties:
+          data:
+            type: array
+            items:
+              $ref: '#/components/schemas/jwt_fully_decoded'
+    jwt_fully_decoded:
+      type: object
+      properties:
+        aud:
+          type: string
+        cilogon_access_token:
+          type: string
+        cilogon_identity_token:
+          $ref: '#/components/schemas/cilogon_tokens_identity_token'
+        cilogon_refresh_token:
+          type: string
+        custom_claims:
+          $ref: '#/components/schemas/jwt_decoded_CustomClaims'
+        exp:
+          type: string
+        iss:
+          type: string
+        username:
+          type: string
+    status_401_unauthorized_errors:
+      type: object
+      properties:
+        message:
+          type: string
+          default: Unauthorized
+        details:
+          type: string
+      example: null
+    status_500_internal_server_error_errors:
+      type: object
+      properties:
+        message:
+          type: string
+          default: Internal Server Error
+        details:
+          type: string
+      example: null
+    jwt_decoded_CustomClaims:
+      type: object
+      properties:
+        aud:
+          type: string
+        email:
+          type: string
+        family_name:
+          type: string
+        given_name:
+          type: string
+        iss:
+          type: string
+        name:
+          type: string
+        sub:
+          type: string
+      example: null
+    cilogon_tokens_identity_token:
+      type: object
+      properties:
+        aud:
+          type: string
+        auth_time:
+          type: string
+        email:
+          type: string
+        exp:
+          type: string
+        family_name:
+          type: string
+        given_name:
+          type: string
+        iat:
+          type: string
+        iss:
+          type: string
+        jti:
+          type: string
+        name:
+          type: string
+        sub:
+          type: string
+      example: null
+  responses:
+    "200_cookie_encoded":
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/api_cookie_encoded'
+    "200_jwt_decoded":
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/api_jwt_decoded'
+    "200_cilogon_tokens":
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/api_cilogon_tokens'
+    "200_jwt_fully_decoded":
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/api_jwt_fully_decoded'
+    "401_unauthorized":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/status_401_unauthorized'
+    "500_internal_server_error":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/status_500_internal_server_error'
+
