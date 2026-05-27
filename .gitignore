@@ -7,6 +7,9 @@ vouch/config*
 !vouch/config.template
 .DS_Store
 
+# SSL development certificates — regenerate locally (see ssl/README.md)
+ssl/*.pem
+
 ### VirtualEnv template
 # Virtualenv
 # http://iamzed.com/2009/05/07/a-primer-on-virtualenv/

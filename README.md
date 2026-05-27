@@ -21,6 +21,9 @@ Explore how Vouch Proxy encapsulates OIDC authentication data as an encoded JWT
     - [cURL with cookie](#curl)
 - [Configuration](#config)
 - [Usage](#usage)
+    - [Prerequisites](#usage-prereqs)
+    - [All-Docker deployment](#usage-all-docker)
+    - [Host-Flask development](#usage-host-flask)
 - [References](#references)
 
 ## <a name="demo"></a>Demonstration
@@ -467,14 +470,13 @@ export API_JSON_RESPONSE_INDENT=2
 export VOUCH_COOKIE_NAME=vouch-cookie-name-goes-here
 export VOUCH_JWT_SECRET="vouch-jwt-secret-goes-here"
 
-### Python Path
-export PYTHONPATH=$(pwd)/server:${PYTHONPATH}
-
 ### Flask
 export FLASK_APP=swagger_server.__main__:app
 ```
 
-Copy the `env.template` file as `.env` and populate according to your environment
+> The uwsgi configuration in [`server/vouch-proxy-demo-api.ini`](./server/vouch-proxy-demo-api.ini) now sets `pythonpath = server` directly, so there is no need to export `PYTHONPATH` from the environment in either deployment mode.
+
+Copy the `vouch/config.template` file as `vouch/config` and populate according to your environment
 
 - update: values of `127.0.0.1` or `https://127.0.0.1:8443` with your domain
 - replace: `vouch-cookie-name-goes-here` with your cookie name
@@ -482,7 +484,7 @@ Copy the `env.template` file as `.env` and populate according to your environmen
 - replace: `CILOGON_CLIENT_ID` with your OIDC Client ID
 - replace: `CILOGON_CLIENT_SECRET` with your OIDC Client Secret
 
-```ini
+```yaml
 # vouch config
 # bare minimum to get vouch running with OpenID Connect (such as okta)
 
@@ -567,9 +569,64 @@ oauth:
 
 ## <a name="usage"></a>Usage
 
-### Local Development
+The default deployment runs the entire stack — Flask application, Vouch-Proxy, and Nginx — in Docker. A host-Flask mode is documented as an alternative for live-reload / IDE-debugging workflows.
 
-Flask is run on host while Vouch-Proxy and Nginx is run in Docker
+### <a name="usage-prereqs"></a>Prerequisites (both modes)
+
+1. Populate `.env` and `vouch/config` from their templates (see [Configuration](#config)). The `flask-server` container reads `.env` via Compose's `env_file:` directive — the file is no longer baked into the image.
+
+2. Generate the self-signed SSL certificates used by Nginx
+
+    The `ssl/` directory does **not** contain checked-in certificates (the previously committed development key was removed after GitHub secret scanning flagged it). Generate them before starting Nginx — see [`ssl/README.md`](./ssl/README.md) for full details:
+
+    ```console
+    cd ssl
+    openssl req -x509 -outform pem -out chain.pem -keyout privkey.pem \
+      -newkey rsa:4096 -nodes -sha256 -days 3650 \
+      -subj '/CN=localhost' -extensions EXT -config <( \
+       printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+    cat chain.pem > fullchain.pem
+    cd ..
+    ```
+
+### <a name="usage-all-docker"></a>All-Docker deployment (default)
+
+Runs the Flask application, Vouch-Proxy, and Nginx as a single Compose stack — no host Python or virtualenv required. This is the configuration the repository ships in: `nginx/default.conf` defaults to `proxy_pass http://flask-server:5000/`, and the `flask-server` service is enabled in `docker-compose.yaml`.
+
+1. Build the Flask image and pull the Nginx / Vouch-Proxy images
+
+    ```console
+    docker compose build flask-server
+    docker compose pull nginx vouch-proxy
+    ```
+
+2. Bring up the full stack
+
+    ```console
+    docker compose up -d
+    ```
+
+3. Tail the logs
+
+    ```console
+    docker compose logs -f
+    ```
+
+4. Tear down
+
+    ```console
+    docker compose down
+    ```
+
+The stack is reachable at [https://127.0.0.1:8443/](https://127.0.0.1:8443/) and the Swagger UI is at [https://127.0.0.1:8443/ui/](https://127.0.0.1:8443/ui/).
+
+### <a name="usage-host-flask"></a>Host-Flask development (live-reload, IDE debugging)
+
+Flask is run on the host while Vouch-Proxy and Nginx run in Docker. Useful when iterating on the Flask code with an attached debugger or live reload, since no image rebuild is required between edits.
+
+> **Required edit:** [`nginx/default.conf`](./nginx/default.conf) ships with `proxy_pass http://flask-server:5000/;` for the all-Docker default. Comment that line out and uncomment one of the host-Flask alternatives already present in the same `location /` block:
+> - **Docker Desktop for macOS:** `proxy_pass http://192.168.65.2:5000/;`
+> - **Linux:** `proxy_pass http://host.docker.internal:5000/;` and add `extra_hosts: ["host.docker.internal:host-gateway"]` to the `nginx` service in `docker-compose.yaml`.
 
 1. Set up Python virtual environment
 
@@ -583,16 +640,16 @@ Flask is run on host while Vouch-Proxy and Nginx is run in Docker
 
     ```console
     source .env
-    docker-compose pull
+    docker compose pull nginx vouch-proxy
     ```
 
-3. Bring up Vouch-Proxy and Nginx
+3. Bring up Vouch-Proxy and Nginx only (leave `flask-server` stopped)
 
     ```console
-    docker-compose up -d nginx vouch-proxy
+    docker compose up -d nginx vouch-proxy
     ```
 
-4. Run the vouch-proxy-demo-api Flask application
+4. Run the vouch-proxy-demo-api Flask application on the host
 
     ```console
     UWSGI_UID=$(id -u) UWSGI_GID=$(id -g) uwsgi --virtualenv ./venv --ini server/vouch-proxy-demo-api.ini

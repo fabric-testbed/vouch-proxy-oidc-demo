@@ -1,24 +1,28 @@
 # Local Development
 
-version: '3.9'
 services:
 
-#  flask-server:
-#    # default port 5000
-#    build:
-#      context: ./
-#      dockerfile: Dockerfile
-#    container_name: api-flask-server
-#    networks:
-#      - vouch-proxy-demo-api
-##    ports:
-##      - "5000:5000"
-#    restart: unless-stopped
+  flask-server:
+    # default port 5000
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: api-flask-server
+    env_file:
+      - .env
+    networks:
+      - vouch-proxy-demo-api
+#    ports:
+#      - "5000:5000"
+    restart: unless-stopped
 
   nginx:
     # default port 8443, 80
     image: nginx:1
     container_name: api-nginx
+    depends_on:
+      - flask-server
+      - vouch-proxy
     networks:
       - vouch-proxy-demo-api
     ports:

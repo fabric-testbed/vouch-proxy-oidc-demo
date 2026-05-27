@@ -1,8 +1,9 @@
-connexion
+connexion[flask,swagger-ui]>=2.14,<3
+# Werkzeug 3 tightened routing endpoint validation and breaks Connexion 2.x's swagger UI route
+Werkzeug>=2.2,<3
 cryptography
 pyjwt
 python-dotenv
 pytz
 six
-swagger-ui-bundle # connexion[swagger-ui]
 uwsgi
