@@ -474,7 +474,7 @@ export VOUCH_JWT_SECRET="vouch-jwt-secret-goes-here"
 export FLASK_APP=swagger_server.__main__:app
 ```
 
-> The uwsgi configuration in [`server/vouch-proxy-demo-api.ini`](./server/vouch-proxy-demo-api.ini) now sets `pythonpath = server` directly, so there is no need to export `PYTHONPATH` from the environment in either deployment mode.
+> The API is served by uvicorn with `--app-dir server`, so there is no need to export `PYTHONPATH` from the environment in either deployment mode.
 
 Copy the `vouch/config.template` file as `vouch/config` and populate according to your environment
 
@@ -652,7 +652,7 @@ Flask is run on the host while Vouch-Proxy and Nginx run in Docker. Useful when 
 4. Run the vouch-proxy-demo-api Flask application on the host
 
     ```console
-    UWSGI_UID=$(id -u) UWSGI_GID=$(id -g) uwsgi --virtualenv ./venv --ini server/vouch-proxy-demo-api.ini
+    ./venv/bin/uvicorn --app-dir server swagger_server.__main__:connex_app --host 0.0.0.0 --port 5000
     ```
 
 

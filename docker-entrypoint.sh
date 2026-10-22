@@ -7,7 +7,9 @@ if [[ "${1:-}" == 'run_server' ]]; then
         sed -i '/servers:/!b;n;c- url: http://'${API_SWAGGER_HOST}'/' /code/server/swagger_server/swagger/swagger.yaml
     fi
 
-    exec uwsgi --ini server/vouch-proxy-demo-api.ini
+    exec uvicorn --app-dir server swagger_server.__main__:connex_app \
+        --host 0.0.0.0 --port 5000 --workers "${API_WORKERS:-8}" \
+        --proxy-headers --forwarded-allow-ips '*'
 else
     exec "$@"
 fi
