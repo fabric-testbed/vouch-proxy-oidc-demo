@@ -1,2 +1,2 @@
 pytest>=8
-coverage>=7
+coverage>=7.17.2
