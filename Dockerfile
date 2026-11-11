@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm
+FROM python:3.15-slim-bookworm
 LABEL maintainer="Michael J. Stealey <michael.j.stealey@gmail.com>"
 
 WORKDIR /code
