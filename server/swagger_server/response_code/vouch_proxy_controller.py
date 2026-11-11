@@ -67,7 +67,6 @@ def step2_decoded_vouch_jwt_get() -> ApiJwtDecoded:  # noqa: E501
         # decode bytes
         vouch_jwt = vouch_jwt_bytes.decode('utf-8')
         # decode JWT using Vouch Proxy secret key (do not verify aud)
-        print(vouch_jwt)
         vouch_json = jwt.decode(
             jwt=vouch_jwt,
             key=os.getenv('VOUCH_JWT_SECRET'),
@@ -133,7 +132,6 @@ def step3_decoded_cilogon_tokens_get() -> ApiCilogonTokens:  # noqa: E501
         # get the signing key from the jwks endpoint
         signing_key = jwks_client.get_signing_key_from_jwt(vouch_json.get('PIdToken'))
         # decode JWT using CILogon signing key (do not verify aud or exp) - RS256
-        print(vouch_json.get('PIdToken'))
         identity_json = jwt.decode(
             jwt=vouch_json.get('PIdToken'),
             key=signing_key.key,
